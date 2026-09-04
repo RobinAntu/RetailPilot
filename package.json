@@ -1,0 +1,36 @@
+{
+  "name": "retailpilot",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "RetailPilot — Smarter Stock. Less Waste. More Profit.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
+    "firebase": "^10.13.0",
+    "lucide-react": "^0.441.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "recharts": "^2.12.7",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.11",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.6",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}

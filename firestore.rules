@@ -1,0 +1,106 @@
+rules_version = '2';
+// ---------------------------------------------------------------------------
+// RetailPilot — Firestore security rules (PRODUCTION)
+// Multi-store isolation enforced at the database level. Every document lives
+// under stores/{storeId}. A user may only reach their own store, identified by
+// the `storeId` + `role` custom claims set at authentication/signup time.
+// Never deploy Firestore in test mode.
+// ---------------------------------------------------------------------------
+
+function isSignedIn() {
+  return request.auth != null;
+}
+function isOwner() {
+  return isSignedIn() && request.auth.token.storeId == request.auth.token.storeId
+      && request.auth.token.role == 'owner';
+}
+function inStore(storeId) {
+  return isSignedIn() && request.auth.token.storeId == storeId;
+}
+function hasRole(storeId, role) {
+  return inStore(storeId) && request.auth.token.role == role;
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Store root ------------------------------------------------------
+    match /stores/{storeId} {
+      allow read: if inStore(storeId);
+
+      // ---- meta (settings + counters) ----
+      match /meta/{doc} {
+        allow read: if inStore(storeId);
+        allow write: if inStore(storeId) && hasRole(storeId, 'owner') || hasRole(storeId, 'manager');
+      }
+
+      // ---- users (role management) ----
+      match /users/{userId} {
+        allow read: if inStore(storeId);
+        // Only the Owner manages users (invite, deactivate, role change).
+        allow create, update, delete: if hasRole(storeId, 'owner');
+      }
+
+      // ---- auditLogs ----
+      match /auditLogs/{logId} {
+        // Anyone may append an audit entry, but nobody (even the Owner) may
+        // modify or delete existing records — audit integrity is non-negotiable.
+        allow create: if inStore(storeId);
+        allow read: if inStore(storeId);
+        allow update, delete: if false;
+      }
+
+      // ---- products / suppliers / batches / sales / waste / orders ----
+      match /products/{id} {
+        allow read: if inStore(storeId);
+        allow create, update, delete: if inStore(storeId) && hasRole(storeId, 'owner') || hasRole(storeId, 'manager') || hasRole(storeId, 'staff');
+      }
+      match /suppliers/{id} {
+        allow read: if inStore(storeId);
+        allow write: if hasRole(storeId, 'owner') || hasRole(storeId, 'manager');
+      }
+      match /batches/{id} {
+        allow read: if inStore(storeId);
+        // Receiving/stock movement: owner, manager and (if configured) staff.
+        allow create, update: if inStore(storeId) && hasRole(storeId, 'owner') || hasRole(storeId, 'manager') || hasRole(storeId, 'staff');
+        allow delete: if false; // batches are never hard-deleted
+      }
+      match /sales/{id} {
+        allow read: if inStore(storeId);
+        allow create: if inStore(storeId);
+        // Voiding a sale is restricted to managers/owners.
+        allow update: if hasRole(storeId, 'owner') || hasRole(storeId, 'manager');
+        allow delete: if false;
+      }
+      match /waste/{id} {
+        allow read: if inStore(storeId);
+        allow create: if inStore(storeId);
+        allow update, delete: if false;
+      }
+      match /purchaseOrders/{id} {
+        allow read: if inStore(storeId);
+        allow write: if hasRole(storeId, 'owner') || hasRole(storeId, 'manager');
+      }
+      match /heldSales/{id} {
+        allow read, write, delete: if inStore(storeId);
+      }
+      match /notifications/{id} {
+        allow read, update: if inStore(storeId);
+        allow create: if inStore(storeId);
+        allow delete: if false;
+      }
+
+      // ---- invoices/settings/storage metadata live under meta ----
+      match /meta/{doc} {
+        allow read: if inStore(storeId);
+        allow write: if hasRole(storeId, 'owner') || hasRole(storeId, 'manager');
+      }
+    }
+
+    // ---- Cross-store safety net ------------------------------------------
+    // Deny everything outside the stores collection.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

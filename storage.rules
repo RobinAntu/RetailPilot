@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Backups and exported workbooks are private to the signed-in user's store.
+    function inStore(storeId) {
+      return request.auth != null && request.auth.token.storeId == storeId;
+    }
+    match /{storeId}/{allPaths=**} {
+      allow read: if inStore(storeId);
+      allow write: if inStore(storeId)
+        && (request.auth.token.role == 'owner' || request.auth.token.role == 'manager');
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

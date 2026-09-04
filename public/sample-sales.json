@@ -1,0 +1,13 @@
+{
+  "store": "Sample Store",
+  "generated": "2026-09-03T00:00:00.000Z",
+  "sales": [
+    { "Sale Date": "2026-09-03", "Item Name": "White Milk 2L", "Qty": 3, "Amount": 5.1, "Payment": "Card" },
+    { "Sale Date": "2026-09-03", "Item Name": "Free Range Eggs 12", "Qty": 1, "Amount": 4.9, "Payment": "Cash" },
+    { "Sale Date": "2026-09-03", "Item Name": "Gala Apples 1kg", "Qty": 2, "Amount": 3.5, "Payment": "Card" },
+    { "Sale Date": "2026-09-03", "Item Name": "Chicken Breast 1kg", "Qty": 1, "Amount": 10.5, "Payment": "Card" },
+    { "Sale Date": "2026-09-03", "Item Name": "Bananas 1kg", "Qty": 2, "Amount": 2.2, "Payment": "Card" },
+    { "Sale Date": "2026-09-03", "Item Name": "Tasty Cheese 500g", "Qty": 1, "Amount": 6.4, "Payment": "Cash" },
+    { "Sale Date": "2026-09-03", "Item Name": "Potatoes 1kg", "Qty": 3, "Amount": 2.1, "Payment": "Card" }
+  ]
+}

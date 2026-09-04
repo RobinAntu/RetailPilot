@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-page text-textprimary font-sans antialiased;
+    overscroll-behavior-y: none;
+    text-rendering: optimizeLegibility;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  ::selection {
+    background: rgba(37, 99, 235, 0.18);
+  }
+}
+
+@layer components {
+  /* ---------- Buttons ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-150 focus:outline-none focus-visible:ring-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-white px-4 py-2.5 text-sm min-h-[44px] shadow-[0_1px_2px_rgba(37,99,235,0.4)] hover:bg-primary-hover hover:shadow-[0_8px_20px_-8px_rgba(37,99,235,0.7)] focus-visible:ring-primary/25;
+  }
+  .btn-gradient {
+    @apply btn bg-brand-gradient text-white px-4 py-2.5 text-sm min-h-[44px] shadow-[0_4px_14px_-4px_rgba(6,182,212,0.6)] hover:brightness-110 focus-visible:ring-cyan2/25;
+  }
+  .btn-secondary {
+    @apply btn bg-white border border-border text-textsecondary px-4 py-2.5 text-sm min-h-[44px] hover:border-primary/40 hover:text-textprimary hover:shadow-soft focus-visible:ring-primary/20;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white px-4 py-2.5 text-sm min-h-[44px] shadow-[0_1px_2px_rgba(220,38,38,0.4)] hover:bg-danger/90 hover:shadow-[0_8px_16px_-8px_rgba(220,38,38,0.7)] focus-visible:ring-danger/25;
+  }
+  .btn-success {
+    @apply btn bg-success text-white px-4 py-2.5 text-sm min-h-[44px] shadow-[0_1px_2px_rgba(22,163,74,0.4)] hover:bg-success/90 focus-visible:ring-success/25;
+  }
+  .btn-ghost {
+    @apply btn text-textsecondary px-3 py-2 text-sm min-h-[44px] hover:bg-slate-100 hover:text-textprimary;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs min-h-[34px] rounded-lg;
+  }
+
+  /* ---------- Cards ---------- */
+  .card {
+    @apply bg-card border border-border rounded-card shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-soft hover:-translate-y-0.5 hover:border-primary/25;
+  }
+
+  /* ---------- Inputs ---------- */
+  .input {
+    @apply w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-textprimary placeholder:text-textmuted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition disabled:bg-slate-50;
+  }
+  .label {
+    @apply block text-[13px] font-semibold text-textsecondary mb-1.5;
+  }
+
+  /* ---------- Tables ---------- */
+  .th {
+    @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-textmuted;
+  }
+  .td {
+    @apply px-4 py-3.5 text-sm text-textprimary align-middle;
+  }
+  .table-base {
+    @apply w-full border-collapse;
+  }
+  .table-row {
+    @apply border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors;
+  }
+
+  /* ---------- Badges & pills ---------- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+  }
+
+  /* ---------- Misc ---------- */
+  .section-title {
+    @apply text-base font-bold text-textprimary tracking-tight;
+  }
+  .subtle {
+    @apply text-sm text-textmuted;
+  }
+}
+
+/* ---------- Scrollbars ---------- */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* ---------- Scan flash ---------- */
+.scan-flash {
+  animation: scanflash 0.35s ease-out;
+}
+@keyframes scanflash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Skeleton shimmer ---------- */
+.skeleton {
+  @apply bg-slate-200 rounded-lg animate-pulse;
+}
+
+/* ---------- Number input clean ---------- */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ---------- Gradient text ---------- */
+.text-gradient {
+  background: linear-gradient(135deg, #2563EB, #06B6D4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

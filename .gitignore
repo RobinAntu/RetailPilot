@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Firebase local state
+.firebase/
+*.log
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+firebase-debug.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Runtime scratch
+*.logic-test.mjs
+connector-*.json
