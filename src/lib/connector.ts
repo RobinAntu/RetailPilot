@@ -161,6 +161,44 @@ export function buildImportedRows(
   return { rows: out, unresolved, missing }
 }
 
+// ---------- Supplier import ----------
+export interface SupplierImportRow {
+  name: string
+  contactPerson: string
+  phone: string
+  email: string
+  address: string
+  leadTimeDays: number
+  minOrderAmountCents: number
+  notes: string
+}
+
+export function buildSupplierRows(rows: Record<string, string>[], field: { name?: string; contact?: string; phone?: string; email?: string; address?: string; lead?: string; minOrder?: string; notes?: string }): { rows: SupplierImportRow[]; skipped: { row: number; reason: string }[] } {
+  const skipped: { row: number; reason: string }[] = []
+  const out: SupplierImportRow[] = []
+  const seen = new Set<string>()
+  rows.forEach((r, i) => {
+    const src = i + 2
+    const name = (field.name ? r[field.name] : '') || ''
+    if (!name.trim()) { skipped.push({ row: src, reason: 'Missing name' }); return }
+    if (seen.has(name.trim().toLowerCase())) { skipped.push({ row: src, reason: 'Duplicate name' }); return }
+    seen.add(name.trim().toLowerCase())
+    const lead = parseInt(String((field.lead ? r[field.lead] : '') || '0').replace(/\D/g, ''), 10) || 0
+    const minAmt = Math.round(parseFloat(String((field.minOrder ? r[field.minOrder] : '') || '0').replace(/[$, ]/g, '')) * 100) || 0
+    out.push({
+      name: name.trim(),
+      contactPerson: (field.contact ? r[field.contact] : '') || '',
+      phone: (field.phone ? r[field.phone] : '') || '',
+      email: (field.email ? r[field.email] : '') || '',
+      address: (field.address ? r[field.address] : '') || '',
+      leadTimeDays: lead,
+      minOrderAmountCents: minAmt,
+      notes: (field.notes ? r[field.notes] : '') || '',
+    })
+  })
+  return { rows: out, skipped }
+}
+
 /** API connectors often return JSON. Normalize common shapes into a row table. */
 export function normalizeApiJson(data: unknown): { headers: string[]; rows: Record<string, string>[] } {
   let arr: any[] = []

@@ -144,6 +144,7 @@ export interface Backend {
   getProducts(storeId: string): Promise<Product[]>
   getProduct(storeId: string, productId: string): Promise<Product | null>
   saveProduct(p: Product): Promise<void>
+  deleteProduct(storeId: string, productId: string, by: { uid: string; name: string }): Promise<void>
   upsertManyProducts(storeId: string, products: Product[]): Promise<number>
 
   // ---- batches ----
@@ -153,6 +154,7 @@ export interface Backend {
   // ---- suppliers ----
   getSuppliers(storeId: string): Promise<Supplier[]>
   saveSupplier(s: Supplier): Promise<void>
+  deleteSupplier(storeId: string, id: string, by: { uid: string; name: string }): Promise<void>
 
   // ---- sales ----
   getSales(storeId: string): Promise<Sale[]>

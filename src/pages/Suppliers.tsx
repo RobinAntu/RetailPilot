@@ -1,14 +1,13 @@
-import { useState } from 'react'
-import { Plus, Pencil, Truck, Phone, Mail, MapPin } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, Upload, Truck, Phone, Mail, MapPin } from 'lucide-react'
 import { useDataStore } from '../store/appStore'
 import { backend } from '../store/appStore'
-import { money } from '../lib/format'
 import { formatDate } from '../lib/date'
 import type { Supplier } from '../types'
-import { Badge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { toast } from '../components/ui/toast'
+import { parseTableFile, buildSupplierRows } from '../lib/connector'
 
 export default function Suppliers() {
   const suppliers = useDataStore((s) => s.suppliers)
@@ -18,6 +17,10 @@ export default function Suppliers() {
   const refresh = useDataStore((s) => s.refresh)
   const [editing, setEditing] = useState<Supplier | null>(null)
   const [creating, setCreating] = useState(false)
+  const [confirmDel, setConfirmDel] = useState<Supplier | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importPreview, setImportPreview] = useState<ReturnType<typeof buildSupplierRows> | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const openPos = (supplierId: string) => orders.filter((o) => o.supplierId === supplierId && (o.status === 'submitted' || o.status === 'partially_received'))
 
@@ -25,8 +28,12 @@ export default function Suppliers() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-extrabold text-textprimary">Suppliers</h1><p className="text-sm text-textmuted">{suppliers.filter((s) => s.active).length} active suppliers</p></div>
-        <button onClick={() => setCreating(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add supplier</button>
+        <div className="flex gap-2">
+          <button onClick={() => fileRef.current?.click()} className="btn-secondary"><Upload className="w-4 h-4" /> Import</button>
+          <button onClick={() => setCreating(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add supplier</button>
+        </div>
       </div>
+      <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" className="hidden" onChange={onImportFile} />
 
       {suppliers.length === 0 ? <EmptyState title="No suppliers yet" message="Add your suppliers so receiving and reorder can use their lead times." action={<button onClick={() => setCreating(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add supplier</button>} /> : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -43,6 +50,7 @@ export default function Suppliers() {
                   </div>
                   <div className="flex gap-1">
                     <button onClick={() => setEditing(s)} className="p-1.5 rounded-md hover:bg-page text-textmuted hover:text-primary"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => setConfirmDel(s)} className="p-1.5 rounded-md hover:bg-danger-light text-textmuted hover:text-danger"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <div className="text-xs text-textmuted space-y-1">
@@ -63,7 +71,100 @@ export default function Suppliers() {
       )}
 
       {(creating || editing) && <SupplierModal supplier={editing} onClose={() => { setCreating(false); setEditing(null) }} />}
+      {confirmDel && <ConfirmDelete supplier={confirmDel} onClose={() => setConfirmDel(null)} />}
+      {importPreview && <ImportPreviewModal preview={importPreview} onClose={() => setImportPreview(null)} onImport={doImportSuppliers} busy={importing} />}
     </div>
+  )
+
+  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const t = await parseTableFile(file)
+      const field = {
+        name: guessCol(t.headers, ['name', 'supplier', 'company']),
+        contact: guessCol(t.headers, ['contact', 'person', 'rep']),
+        phone: guessCol(t.headers, ['phone', 'tel', 'mobile']),
+        email: guessCol(t.headers, ['email', 'mail']),
+        address: guessCol(t.headers, ['address', 'addr']),
+        lead: guessCol(t.headers, ['lead', 'lead time', 'lt']),
+        minOrder: guessCol(t.headers, ['minimum', 'min order', 'min']),
+        notes: guessCol(t.headers, ['notes', 'note']),
+      }
+      setImportPreview(buildSupplierRows(t.rows, field))
+    } catch {
+      toast('error', 'Could not read file', 'Use a .csv, .tsv or .xlsx file.')
+    } finally {
+      setImporting(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function doImportSuppliers() {
+    if (!importPreview || importPreview.rows.length === 0) return
+    setImporting(true)
+    try {
+      const saved: Supplier[] = importPreview.rows.map((r) => ({
+        id: 's_' + Math.random().toString(36).slice(2, 10),
+        storeId: session.storeId, name: r.name, contactPerson: r.contactPerson, phone: r.phone,
+        email: r.email, address: r.address, leadTimeDays: r.leadTimeDays, minOrderAmountCents: r.minOrderAmountCents,
+        notes: r.notes, active: true, createdAt: new Date().toISOString(),
+      }))
+      for (const s of saved) await backend.saveSupplier(s)
+      if (saved.length) await backend.createAuditLog(session.storeId, { uid: session.uid, userName: session.name, action: 'supplier.import', entityType: 'supplier', entityId: 'batch', afterState: { count: saved.length } })
+      toast('success', `${saved.length} suppliers imported`, `${importPreview.rows.length - saved.length} duplicates/missing skipped.`)
+      refresh()
+      setImportPreview(null)
+    } catch (e: any) { toast('error', 'Import failed', e?.message) } finally { setImporting(false) }
+  }
+
+  function guessCol(headers: string[], keys: string[]): string | undefined {
+    return headers.find((h) => keys.some((k) => h.toLowerCase().includes(k)))
+  }
+}
+
+function ConfirmDelete({ supplier, onClose }: { supplier: Supplier; onClose: () => void }) {
+  const session = useDataStore((s) => s.session)!
+  const refresh = useDataStore((s) => s.refresh)
+  const [busy, setBusy] = useState(false)
+  const del = async () => {
+    setBusy(true)
+    try {
+      await backend.deleteSupplier(session.storeId, supplier.id, { uid: session.uid, name: session.name })
+      toast('success', 'Supplier deleted', supplier.name)
+      refresh()
+      onClose()
+    } catch (e: any) { toast('error', 'Not deleted', e?.message) } finally { setBusy(false) }
+  }
+  return (
+    <Modal open onClose={onClose} title="Delete supplier" width="max-w-md">
+      <p className="text-sm text-textsecondary">Delete <b>{supplier.name}</b>? This removes the supplier and unlinks its products. Existing purchase orders are kept.</p>
+      <div className="flex justify-end gap-2 mt-5">
+        <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <button onClick={del} disabled={busy} className="btn-danger">{busy ? 'Deleting…' : 'Delete supplier'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+function ImportPreviewModal({ preview, onClose, onImport, busy }: { preview: ReturnType<typeof buildSupplierRows>; onClose: () => void; onImport: () => void; busy: boolean }) {
+  return (
+    <Modal open onClose={onClose} title="Import suppliers" width="max-w-2xl">
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-success-light text-success">{preview.rows.length} ready to import</span>
+        {preview.skipped.length > 0 && <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-warning-light text-warning">{preview.skipped.length} skipped</span>}
+      </div>
+      <div className="max-h-72 overflow-auto rounded-lg border border-slate-100">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-xs uppercase tracking-wide text-textmuted border-b bg-page"><th className="p-2">Name</th><th className="p-2">Contact</th><th className="p-2">Phone</th><th className="p-2">Lead (d)</th></tr></thead>
+          <tbody>
+            {preview.rows.slice(0, 15).map((r, i) => <tr key={i} className="border-b border-slate-100"><td className="p-2 font-medium">{r.name}</td><td className="p-2 text-textmuted">{r.contactPerson}</td><td className="p-2 text-textmuted">{r.phone}</td><td className="p-2">{r.leadTimeDays}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex justify-end gap-2 mt-4"><button onClick={onClose} className="btn-secondary">Cancel</button><button onClick={onImport} disabled={busy || preview.rows.length === 0} className="btn-primary">{busy ? 'Importing…' : `Import ${preview.rows.length}`}</button></div>
+    </Modal>
   )
 }
 

@@ -204,6 +204,14 @@ export class LocalBackend implements Backend {
     saveList(storeId, 'products', list)
     return added
   }
+  async deleteProduct(storeId: string, productId: string, by: { uid: string; name: string }): Promise<void> {
+    const list = await this.getProducts(storeId)
+    saveList(storeId, 'products', list.filter((p) => p.id !== productId))
+    // Remove its batches so stock no longer dangles.
+    const batches = await this.getBatches(storeId, productId)
+    if (batches.length) saveList(storeId, 'batches', loadList(storeId, 'batches').filter((b: any) => b.productId !== productId))
+    await this.createAuditLog(storeId, { uid: by.uid, userName: by.name, action: 'product.delete', entityType: 'product', entityId: productId, beforeState: { productId } })
+  }
 
   // ---------------- batches ----------------
   async getBatches(storeId: string, productId?: string): Promise<StockBatch[]> {
@@ -224,6 +232,19 @@ export class LocalBackend implements Backend {
     if (i >= 0) list[i] = s
     else list.push(s)
     saveList(s.storeId, 'suppliers', list)
+  }
+  async deleteSupplier(storeId: string, id: string, by: { uid: string; name: string }): Promise<void> {
+    const list = await this.getSuppliers(storeId)
+    saveList(storeId, 'suppliers', list.filter((x) => x.id !== id))
+    // Clear supplier references on products so they don't dangle.
+    const products = await this.getProducts(storeId)
+    let changed = false
+    const next = products.map((p) => {
+      if (p.supplierId === id) { changed = true; return { ...p, supplierId: '', supplierName: undefined } }
+      return p
+    })
+    if (changed) saveList(storeId, 'products', next)
+    await this.createAuditLog(storeId, { uid: by.uid, userName: by.name, action: 'supplier.delete', entityType: 'supplier', entityId: id, beforeState: { id } })
   }
 
   // ---------------- sales ----------------

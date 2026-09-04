@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Plus, Download, Upload, Pencil, PackagePlus, SlidersHorizontal, Archive, Scan,
+  Plus, Download, Upload, Pencil, PackagePlus, SlidersHorizontal, Archive, Trash2, Scan,
   Boxes, Search, Barcode,
 } from 'lucide-react'
 import { useDataStore } from '../store/appStore'
@@ -76,6 +76,12 @@ export default function Inventory() {
     await backend.saveProduct({ ...p, active: false })
     await backend.createAuditLog(session.storeId, { uid: session.uid, userName: session.name, action: 'product.archive', entityType: 'product', entityId: p.id, afterState: { active: false } })
     toast('success', 'Product archived', `${p.name} is now inactive.`)
+    refresh()
+  }
+  const deleteOne = async (p: Product) => {
+    if (!confirm(`Permanently delete "${p.name}" and its stock batches? This cannot be undone.`)) return
+    await backend.deleteProduct(session.storeId, p.id, { uid: session.uid, name: session.name })
+    toast('success', 'Product deleted', `${p.name} removed.`)
     refresh()
   }
 
@@ -160,6 +166,7 @@ export default function Inventory() {
                         <IconBtn title="Adjust" onClick={() => setAdjustFor(p)}><SlidersHorizontal className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Barcode" onClick={() => navigate('/barcode')}><Barcode className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Archive" danger onClick={() => archive(p)}><Archive className="w-4 h-4" /></IconBtn>
+                        <IconBtn title="Delete" danger onClick={() => deleteOne(p)}><Trash2 className="w-4 h-4" /></IconBtn>
                       </div>
                     </td>
                   </tr>

@@ -133,6 +133,15 @@ export class FirestoreBackend implements Backend {
   async saveProduct(p: Product): Promise<void> {
     await setDoc(doc(this.db(), `stores/${p.storeId}/products`, p.id), p)
   }
+  async deleteProduct(storeId: string, productId: string, by: { uid: string; name: string }): Promise<void> {
+    const db = this.db()
+    const batch = writeBatch(db)
+    batch.delete(doc(db, `stores/${storeId}/products`, productId))
+    const bs = await this.getBatches(storeId, productId)
+    for (const b of bs) batch.delete(doc(db, `stores/${storeId}/batches`, b.id))
+    await batch.commit()
+    await this.createAuditLog(storeId, { uid: by.uid, userName: by.name, action: 'product.delete', entityType: 'product', entityId: productId, beforeState: { productId } })
+  }
   async upsertManyProducts(storeId: string, products: Product[]): Promise<number> {
     const batch = writeBatch(this.db())
     let added = 0
@@ -162,6 +171,19 @@ export class FirestoreBackend implements Backend {
   }
   async saveSupplier(s: Supplier): Promise<void> {
     await setDoc(doc(this.db(), `stores/${s.storeId}/suppliers`, s.id), s)
+  }
+  async deleteSupplier(storeId: string, id: string, by: { uid: string; name: string }): Promise<void> {
+    const db = this.db()
+    await deleteDoc(doc(db, `stores/${storeId}/suppliers`, id))
+    // Unlink products from this supplier.
+    const prods = await this.getProducts(storeId)
+    const batch = writeBatch(db)
+    let changed = false
+    for (const p of prods) {
+      if (p.supplierId === id) { batch.set(doc(db, `stores/${storeId}/products`, p.id), { ...p, supplierId: '', supplierName: undefined }); changed = true }
+    }
+    if (changed) await batch.commit()
+    await this.createAuditLog(storeId, { uid: by.uid, userName: by.name, action: 'supplier.delete', entityType: 'supplier', entityId: id, beforeState: { id } })
   }
 
   async getSales(storeId: string): Promise<Sale[]> {
